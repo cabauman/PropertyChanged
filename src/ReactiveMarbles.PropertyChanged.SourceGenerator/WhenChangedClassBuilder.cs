@@ -50,90 +50,85 @@ namespace ReactiveMarbles.PropertyChanged
         public static string GetMultiExpressionMethod(string inputType, string outputType, string expressionParameters, string body)
         {
             return $@"
-        public static IObservable<{outputType}> WhenChanged(
-            this {inputType} objectToMonitor,
+    public static IObservable<{outputType}> WhenChanged(
+        this {inputType} objectToMonitor,
 {expressionParameters}
-        {{
+    {{
 {body}
-        }}
+    }}
 ";
         }
 
         public static string GetWhenChangedMethod(string inputType, string outputType, string mapName)
         {
             return $@"
-        public static IObservable<{outputType}> WhenChanged(this {inputType} source, Expression<Func<{inputType}, {outputType}>> propertyExpression)
-        {{
-            var body = propertyExpression.Body.ToString();
-            var key = body.Substring(body.IndexOf('.') + 1);
-            return {mapName}[key].Invoke(source);
-        }}
+    public static IObservable<{outputType}> WhenChanged(this {inputType} source, Expression<Func<{inputType}, {outputType}>> propertyExpression)
+    {{
+        var body = propertyExpression.Body.ToString();
+        var key = body.Substring(body.IndexOf('.') + 1);
+        return {mapName}[key].Invoke(source);
+    }}
 ";
         }
 
         public static string GetMapEntryChain(string memberName)
         {
             return $@"
-                    .Where(x => x != null)
-                    .Select(x => GenerateObservable(x, ""{memberName}"", y => y.{memberName}))
-                    .Switch()";
+                .Where(x => x != null)
+                .Select(x => GenerateObservable(x, ""{memberName}"", y => y.{memberName}))
+                .Switch()";
         }
 
         public static string GetMapEntry(string key, string valueChain)
         {
-            return $@"
-            {{
-                ""{key}"",
-                source => Observable.Return(source){valueChain}
-            }},";
+        return $@"
+        {{
+            ""{key}"",
+            source => Observable.Return(source){valueChain}
+        }},";
         }
 
         public static string GetMap(string inputType, string outputType, string mapName, string entries)
         {
             return $@"
-        private static readonly Dictionary<string, Func<{inputType}, IObservable<{outputType}>>> {mapName} = new Dictionary<string, Func<{inputType}, IObservable<{outputType}>>>()
-        {{
+    private static readonly Dictionary<string, Func<{inputType}, IObservable<{outputType}>>> {mapName} = new Dictionary<string, Func<{inputType}, IObservable<{outputType}>>>()
+    {{
 {entries}
-        }};
+    }};
 ";
         }
 
-        public static string GetClass(string namespaceName, string className, string body)
+        public static string GetClass(string className, string body)
         {
             return $@"
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Reactive;
 using System.Reactive.Linq;
 
-namespace {namespaceName}
+public static class {className}WhenChanged
 {{
-    public static class {className}WhenChanged
+    private static IObservable<T> GenerateObservable<TObj, T>(
+        TObj parent,
+        string memberName,
+        Func<TObj, T> getter)
+        where TObj : INotifyPropertyChanged
     {{
-        private static IObservable<T> GenerateObservable<TObj, T>(
-            TObj parent,
-            string memberName,
-            Func<TObj, T> getter)
-            where TObj : INotifyPropertyChanged
-        {{
-            return Observable.FromEvent<PropertyChangedEventHandler, (object Sender, PropertyChangedEventArgs Args)>(
-                    handler =>
-                    {{
-                        void Handler(object sender, PropertyChangedEventArgs e) => handler((sender, e));
-                        return Handler;
-                    }},
-                    x => parent.PropertyChanged += x,
-                    x => parent.PropertyChanged -= x)
-                .Where(x => x.Args.PropertyName == memberName)
-                .Select(x => getter(parent))
-                .StartWith(getter(parent));
-        }}
-
-        {body}
+        return Observable.FromEvent<PropertyChangedEventHandler, (object Sender, PropertyChangedEventArgs Args)>(
+                handler =>
+                {{
+                    void Handler(object sender, PropertyChangedEventArgs e) => handler((sender, e));
+                    return Handler;
+                }},
+                x => parent.PropertyChanged += x,
+                x => parent.PropertyChanged -= x)
+            .Where(x => x.Args.PropertyName == memberName)
+            .Select(x => getter(parent))
+            .StartWith(getter(parent));
     }}
+
+    {body}
 }}
 ";
         }

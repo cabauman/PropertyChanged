@@ -100,8 +100,7 @@ namespace ReactiveMarbles.PropertyChanged
             }
 
             ProcessMultiExpressionMethods(classBodyBuilder, multiExpressionMethods);
-            string namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
-            var source = WhenChangedClassBuilder.GetClass(namespaceName, classSymbol.Name, classBodyBuilder.ToString());
+            var source = WhenChangedClassBuilder.GetClass(classSymbol.Name, classBodyBuilder.ToString());
 
             return source;
         }
