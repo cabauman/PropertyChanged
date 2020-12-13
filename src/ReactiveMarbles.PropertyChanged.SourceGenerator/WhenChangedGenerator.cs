@@ -45,12 +45,20 @@ namespace ReactiveMarbles.PropertyChanged
                 {
                     var arguments = invocationExpression.ArgumentList.Arguments;
                     var argDetailObjectsForMethod = new List<ArgumentDetail>(arguments.Count);
-                    var lambdaExpressions = arguments.Select(x => x.Expression).Cast<LambdaExpressionSyntax>();
 
-                    foreach (var lambda in lambdaExpressions)
+                    foreach (var argument in arguments)
                     {
-                        var lambdaOutputType = model.GetTypeInfo(lambda.Body).Type;
-                        argDetailObjectsForMethod.Add(new(lambda, methodSymbol.ReceiverType, lambdaOutputType));
+                        if (argument.Expression is LambdaExpressionSyntax lambdaExpression)
+                        {
+                            var lambdaOutputType = model.GetTypeInfo(lambdaExpression.Body).Type;
+                            argDetailObjectsForMethod.Add(new(lambdaExpression, methodSymbol.ReceiverType, lambdaOutputType));
+                        }
+                        else if (model.GetTypeInfo(argument.Expression).ConvertedType.Name.Equals("Expression"))
+                        {
+                            // The argument is evaluates to an expression but it's not inline (could be a variable, method invocation, etc).
+                            // TODO: Issue a diagnostic.
+                            return;
+                        }
                     }
 
                     propertyExpressionDetailObjects.AddRange(argDetailObjectsForMethod);

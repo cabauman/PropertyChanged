@@ -21,8 +21,10 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator.Tests
         public void SimpleGeneratorTest()
         {
             string userSource = @"
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 
 namespace Sample
@@ -37,8 +39,13 @@ namespace Sample
 
         public Program()
         {
-            this.WhenChanged(x => x.MyString);
+            Expression<Func<Program, string>> myExpression = x => x.MyString;
+            NotifyPropertyChangedExtensions.WhenChanged(this, GetExpression());
+            NotifyPropertyChangedExtensions.WhenChanged(this, myExpression);
+            NotifyPropertyChangedExtensions.WhenChanged(this, x => x.MyString);
         }
+
+        public Expression<Func<Program, string>> GetExpression() => x => x.MyString;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
