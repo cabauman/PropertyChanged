@@ -32,6 +32,7 @@ namespace Sample
     public class Program : INotifyPropertyChanged
     {
         private string _myString;
+        private Program _child;
 
         public static void Main(string[] args)
         {
@@ -40,9 +41,12 @@ namespace Sample
         public Program()
         {
             Expression<Func<Program, string>> myExpression = x => x.MyString;
-            NotifyPropertyChangedExtensions.WhenChanged(this, GetExpression());
-            NotifyPropertyChangedExtensions.WhenChanged(this, myExpression);
+
+            // NotifyPropertyChangedExtensions.WhenChanged(this, GetExpression());
+            // NotifyPropertyChangedExtensions.WhenChanged(this, myExpression);
             NotifyPropertyChangedExtensions.WhenChanged(this, x => x.MyString);
+            this.WhenChanged(x => x.Child.MyString);
+            this.WhenChanged(x => x.Child, x => x.MyString, (a, b) => a.ToString() + b);
         }
 
         public Expression<Func<Program, string>> GetExpression() => x => x.MyString;
@@ -53,6 +57,12 @@ namespace Sample
         {
             get => _myString;
             set => RaiseAndSetIfChanged(ref _myString, value);
+        }
+
+        public Program Child
+        {
+            get => _child;
+            set => RaiseAndSetIfChanged(ref _child, value);
         }
 
         protected void RaiseAndSetIfChanged<T>(ref T fieldValue, T value, [CallerMemberName] string propertyName = null)

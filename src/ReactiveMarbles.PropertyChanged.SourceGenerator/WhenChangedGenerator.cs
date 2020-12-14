@@ -42,7 +42,7 @@ namespace ReactiveMarbles.PropertyChanged
 
             var compilation = context.Compilation;
 
-            var propertyExpressionDetailObjects = new List<ArgumentDetail>();
+            var argDetailObjects = new List<ArgumentDetail>();
             var multiExpressionMethods = new List<MethodDetail>();
             foreach (var invocationExpression in syntaxReceiver.WhenChangedMethods)
             {
@@ -59,7 +59,7 @@ namespace ReactiveMarbles.PropertyChanged
                         if (argument.Expression is LambdaExpressionSyntax lambdaExpression)
                         {
                             var lambdaOutputType = model.GetTypeInfo(lambdaExpression.Body).Type;
-                            argDetailObjectsForMethod.Add(new(lambdaExpression, methodSymbol.ReceiverType, lambdaOutputType));
+                            argDetailObjectsForMethod.Add(new(lambdaExpression, methodSymbol.TypeArguments[0], lambdaOutputType));
                         }
                         else if (model.GetTypeInfo(argument.Expression).ConvertedType.Name.Equals("Expression"))
                         {
@@ -72,18 +72,19 @@ namespace ReactiveMarbles.PropertyChanged
                         }
                     }
 
-                    propertyExpressionDetailObjects.AddRange(argDetailObjectsForMethod);
+                    argDetailObjects.AddRange(argDetailObjectsForMethod);
 
-                    if (arguments.Count > 1)
+                    if (argDetailObjectsForMethod.Count > 1)
                     {
-                        propertyExpressionDetailObjects.RemoveAt(propertyExpressionDetailObjects.Count - 1);
+                        // The last argument is the conversion function, which we're not interested in here.
+                        argDetailObjects.RemoveAt(argDetailObjects.Count - 1);
                         var outputType = model.GetTypeInfo(argDetailObjectsForMethod.Last().LambdaExpression.Body).Type;
-                        multiExpressionMethods.Add(new(methodSymbol.ReceiverType, outputType, argDetailObjectsForMethod));
+                        multiExpressionMethods.Add(new(methodSymbol.TypeArguments[0], outputType, argDetailObjectsForMethod));
                     }
                 }
             }
 
-            foreach (var group in propertyExpressionDetailObjects.GroupBy(x => x.InputType))
+            foreach (var group in argDetailObjects.GroupBy(x => x.InputType))
             {
                 string classSource = ProcessClass(group.Key, group.ToList(), multiExpressionMethods);
                 if (classSource != null)
@@ -201,11 +202,11 @@ namespace ReactiveMarbles.PropertyChanged
                 string bodyCode = WhenChangedClassBuilder.GetMultiExpressionMethodBody(method.Arguments.Count - 1);
                 var tempReturnTypes = method.Arguments
                     .Take(method.Arguments.Count - 1)
-                    .Select(x => x.OutputType.Name)
+                    .Select(x => x.OutputType.ToDisplayString())
                     .ToList();
 
-                var parametersCode = WhenChangedClassBuilder.GetMultiExpressionMethodParameters(method.InputType.Name, method.OutputType.Name, tempReturnTypes, method.Arguments.Count - 1);
-                var methodCode = WhenChangedClassBuilder.GetMultiExpressionMethod(method.InputType.Name, method.OutputType.Name, parametersCode, bodyCode);
+                var parametersCode = WhenChangedClassBuilder.GetMultiExpressionMethodParameters(method.InputType.ToDisplayString(), method.OutputType.ToDisplayString(), tempReturnTypes, method.Arguments.Count - 1);
+                var methodCode = WhenChangedClassBuilder.GetMultiExpressionMethod(method.InputType.ToDisplayString(), method.OutputType.ToDisplayString(), parametersCode, bodyCode);
                 source.Append(methodCode);
             }
         }

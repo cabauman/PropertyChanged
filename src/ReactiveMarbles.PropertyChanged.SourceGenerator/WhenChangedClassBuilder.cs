@@ -14,7 +14,7 @@ namespace ReactiveMarbles.PropertyChanged
             var sb = new StringBuilder();
             for (int i = 0; i < counter; i++)
             {
-                sb.AppendLine($"            Expression<Func<{inputType}, {tempReturnTypes[i]}>> propertyExpression{i + 1},");
+                sb.AppendLine($"        Expression<Func<{inputType}, {tempReturnTypes[i]}>> propertyExpression{i + 1},");
             }
 
             sb.Append("            Func<");
@@ -33,10 +33,10 @@ namespace ReactiveMarbles.PropertyChanged
             var sb = new StringBuilder();
             for (int i = 0; i < counter; i++)
             {
-                sb.AppendLine($"            var obs{i + 1} = objectToMonitor.WhenChanged(propertyExpression{i + 1});");
+                sb.AppendLine($"        var obs{i + 1} = objectToMonitor.WhenChanged(propertyExpression{i + 1});");
             }
 
-            sb.Append("            return obs1.CombineLatest(");
+            sb.Append("        return obs1.CombineLatest(");
             for (int i = 1; i < counter; i++)
             {
                 sb.Append($"obs{i + 1}, ");
