@@ -108,12 +108,7 @@ namespace ReactiveMarbles.PropertyChanged
                 ProcessMethod(
                     classBodyBuilder,
                     group
-                        .GroupBy(
-                            x =>
-                            {
-                                var body = x.LambdaExpression.Body.ToString();
-                                return body.Substring(body.IndexOf('.') + 1);
-                            })
+                        .GroupBy(x => x.LambdaExpression.Body.ToString())
                         .Select(x => x.First())
                         .ToList());
             }
@@ -163,8 +158,7 @@ namespace ReactiveMarbles.PropertyChanged
                     return;
                 }
 
-                var expressionChainString = lambda.Body.ToString();
-                var mapKey = expressionChainString.Substring(expressionChainString.IndexOf('.') + 1);
+                var mapKey = lambda.Body.ToString();
 
                 var mapEntryCode = WhenChangedClassBuilder.GetMapEntry(mapKey, GetObservableChainCode(expressionChain));
                 mapEntryBuilder.Append(mapEntryCode);

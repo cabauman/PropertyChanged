@@ -64,9 +64,7 @@ namespace ReactiveMarbles.PropertyChanged
             return $@"
     public static IObservable<{outputType}> WhenChanged(this {inputType} source, Expression<Func<{inputType}, {outputType}>> propertyExpression)
     {{
-        var body = propertyExpression.Body.ToString();
-        var key = body.Substring(body.IndexOf('.') + 1);
-        return {mapName}[key].Invoke(source);
+        return {mapName}[propertyExpression.Body.ToString()].Invoke(source);
     }}
 ";
         }
