@@ -20,6 +20,14 @@ namespace ReactiveMarbles.PropertyChanged
 
         private record ArgumentDetail(LambdaExpressionSyntax LambdaExpression, ITypeSymbol InputType, ITypeSymbol OutputType);
 
+        private static readonly DiagnosticDescriptor InvalidMemberExpressionError = new DiagnosticDescriptor(
+            id: "RM001",
+            title: "Invalid member expression",
+            messageFormat: "The expression can only include property and field access",
+            category: "CA1001",
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public void Initialize(GeneratorInitializationContext context)
         {
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
@@ -56,7 +64,10 @@ namespace ReactiveMarbles.PropertyChanged
                         else if (model.GetTypeInfo(argument.Expression).ConvertedType.Name.Equals("Expression"))
                         {
                             // The argument is evaluates to an expression but it's not inline (could be a variable, method invocation, etc).
-                            // TODO: Issue a diagnostic.
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    descriptor: InvalidMemberExpressionError,
+                                    location: invocationExpression.GetLocation()));
                             return;
                         }
                     }
@@ -116,44 +127,46 @@ namespace ReactiveMarbles.PropertyChanged
         private static void ProcessMethod(StringBuilder source, List<ArgumentDetail> propertyExpressionDetailObjects)
         {
             var (lambdaExpression, inputTypeSymbol, outputTypeSymbol) = propertyExpressionDetailObjects.First();
+
+            if (propertyExpressionDetailObjects.Count == 1)
+            {
+                // Return the observable directly from the method. No dictionary needed.
+                if (lambdaExpression.Body is not MemberAccessExpressionSyntax expressionChain)
+                {
+                    // TODO: Issue a diagnostic stating that only fields and properties are supported.
+                    return;
+                }
+
+                source.Append(
+                    WhenChangedClassBuilder.GetWhenChangedMethodForDirectReturn(
+                        inputTypeSymbol.ToDisplayString(),
+                        outputTypeSymbol.ToDisplayString(),
+                        GetObservableChainCode(expressionChain)));
+
+                return;
+            }
+
             var mapName = $"{inputTypeSymbol.Name}To{outputTypeSymbol.Name}Map";
 
-            var whenChangedMethodCode = WhenChangedClassBuilder.GetWhenChangedMethod(
+            var whenChangedMethodCode = WhenChangedClassBuilder.GetWhenChangedMethodForMap(
                 inputTypeSymbol.ToDisplayString(),
                 outputTypeSymbol.ToDisplayString(),
                 mapName);
 
             var mapEntryBuilder = new StringBuilder();
-            foreach (var methodDetail in propertyExpressionDetailObjects)
+            foreach (var argumentDetail in propertyExpressionDetailObjects)
             {
-                var lambda = methodDetail.LambdaExpression;
+                var lambda = argumentDetail.LambdaExpression;
                 if (lambda.Body is not MemberAccessExpressionSyntax expressionChain)
                 {
                     // TODO: Issue a diagnostic stating that only fields and properties are supported.
                     return;
                 }
 
-                var current = expressionChain;
-                var members = new List<MemberAccessExpressionSyntax>();
-                while (current != null)
-                {
-                    members.Add(current);
-                    current = current.Expression as MemberAccessExpressionSyntax;
-                }
-
-                members.Reverse();
-
-                var expressionChainString = expressionChain.ToString();
+                var expressionChainString = lambda.Body.ToString();
                 var mapKey = expressionChainString.Substring(expressionChainString.IndexOf('.') + 1);
 
-                var observableChainBuilder = new StringBuilder();
-                foreach (var memberAccessExpression in members)
-                {
-                    var observableChainCode = WhenChangedClassBuilder.GetMapEntryChain(memberAccessExpression.Name.ToString());
-                    observableChainBuilder.Append(observableChainCode);
-                }
-
-                var mapEntryCode = WhenChangedClassBuilder.GetMapEntry(mapKey, observableChainBuilder.ToString());
+                var mapEntryCode = WhenChangedClassBuilder.GetMapEntry(mapKey, GetObservableChainCode(expressionChain));
                 mapEntryBuilder.Append(mapEntryCode);
             }
 
@@ -164,6 +177,27 @@ namespace ReactiveMarbles.PropertyChanged
                 mapEntryBuilder.ToString());
 
             source.Append(mapCode).Append(whenChangedMethodCode);
+        }
+
+        private static string GetObservableChainCode(MemberAccessExpressionSyntax expressionChain)
+        {
+            var members = new List<MemberAccessExpressionSyntax>();
+            while (expressionChain != null)
+            {
+                members.Add(expressionChain);
+                expressionChain = expressionChain.Expression as MemberAccessExpressionSyntax;
+            }
+
+            members.Reverse();
+
+            var observableChainBuilder = new StringBuilder();
+            foreach (var memberAccessExpression in members)
+            {
+                var observableChainCode = WhenChangedClassBuilder.GetMapEntryChain(memberAccessExpression.Name.ToString());
+                observableChainBuilder.Append(observableChainCode);
+            }
+
+            return observableChainBuilder.ToString();
         }
 
         private static void ProcessMultiExpressionMethods(StringBuilder source, List<MethodDetail> multiExpressionMethods)

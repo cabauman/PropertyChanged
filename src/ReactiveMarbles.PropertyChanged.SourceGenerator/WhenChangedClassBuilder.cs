@@ -59,7 +59,7 @@ namespace ReactiveMarbles.PropertyChanged
 ";
         }
 
-        public static string GetWhenChangedMethod(string inputType, string outputType, string mapName)
+        public static string GetWhenChangedMethodForMap(string inputType, string outputType, string mapName)
         {
             return $@"
     public static IObservable<{outputType}> WhenChanged(this {inputType} source, Expression<Func<{inputType}, {outputType}>> propertyExpression)
@@ -67,6 +67,16 @@ namespace ReactiveMarbles.PropertyChanged
         var body = propertyExpression.Body.ToString();
         var key = body.Substring(body.IndexOf('.') + 1);
         return {mapName}[key].Invoke(source);
+    }}
+";
+        }
+
+        public static string GetWhenChangedMethodForDirectReturn(string inputType, string outputType, string valueChain)
+        {
+            return $@"
+    public static IObservable<{outputType}> WhenChanged(this {inputType} source, Expression<Func<{inputType}, {outputType}>> propertyExpression)
+    {{
+        return Observable.Return(source){valueChain};
     }}
 ";
         }
