@@ -11,14 +11,12 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
-namespace ReactiveMarbles.PropertyChanged
+namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
     [Generator]
-    internal class WhenChangedGenerator : ISourceGenerator
+    internal sealed class WhenChangedGenerator : ISourceGenerator
     {
-        private record MethodDetail(ITypeSymbol InputType, ITypeSymbol OutputType, List<ArgumentDetail> Arguments);
-
-        private record ArgumentDetail(LambdaExpressionSyntax LambdaExpression, ITypeSymbol InputType, ITypeSymbol OutputType);
+        private static readonly string SourceGeneratorAssemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         private static readonly DiagnosticDescriptor InvalidMemberExpressionError = new DiagnosticDescriptor(
             id: "RM001",
@@ -42,14 +40,14 @@ namespace ReactiveMarbles.PropertyChanged
 
             var compilation = context.Compilation;
 
-            var argDetailObjects = new List<ArgumentDetail>();
-            var multiExpressionMethods = new List<MethodDetail>();
+            var argDetailObjects = new List<ArgumentDetail>(); // consider renaming to expressionArguments
+            var multiExpressionMethods = new HashSet<MethodDetail>(new MethodDetailArgumentOutputTypesComparer());
             foreach (var invocationExpression in syntaxReceiver.WhenChangedMethods)
             {
                 var model = compilation.GetSemanticModel(invocationExpression.SyntaxTree);
                 var symbol = model.GetSymbolInfo(invocationExpression).Symbol;
 
-                if (symbol is IMethodSymbol methodSymbol && methodSymbol.ContainingAssembly.Name.Equals("ReactiveMarbles.PropertyChanged.SourceGenerator"))
+                if (symbol is IMethodSymbol methodSymbol && methodSymbol.ContainingAssembly.Name.Equals(SourceGeneratorAssemblyName))
                 {
                     var arguments = invocationExpression.ArgumentList.Arguments;
                     var argDetailObjectsForMethod = new List<ArgumentDetail>(arguments.Count);
@@ -58,8 +56,12 @@ namespace ReactiveMarbles.PropertyChanged
                     {
                         if (argument.Expression is LambdaExpressionSyntax lambdaExpression)
                         {
-                            var lambdaOutputType = model.GetTypeInfo(lambdaExpression.Body).Type;
-                            argDetailObjectsForMethod.Add(new(lambdaExpression, methodSymbol.TypeArguments[0], lambdaOutputType));
+                            // If it's the conversion function, ignore it.
+                            if (model.GetTypeInfo(argument.Expression).ConvertedType.Name.Equals("Expression"))
+                            {
+                                var lambdaOutputType = model.GetTypeInfo(lambdaExpression.Body).Type;
+                                argDetailObjectsForMethod.Add(new(lambdaExpression, methodSymbol.TypeArguments[0], lambdaOutputType));
+                            }
                         }
                         else if (model.GetTypeInfo(argument.Expression).ConvertedType.Name.Equals("Expression"))
                         {
@@ -76,9 +78,10 @@ namespace ReactiveMarbles.PropertyChanged
 
                     if (argDetailObjectsForMethod.Count > 1)
                     {
-                        // The last argument is the conversion function, which we're not interested in here.
-                        argDetailObjects.RemoveAt(argDetailObjects.Count - 1);
-                        var outputType = model.GetTypeInfo(argDetailObjectsForMethod.Last().LambdaExpression.Body).Type;
+                        // var returnType = methodSymbol.ReturnType as INamedTypeSymbol;
+                        // System.Diagnostics.Debug.Assert(string.Equals(returnType?.Name, "IObservable"));
+                        // var outputType = returnType.TypeArguments[0];
+                        var outputType = methodSymbol.TypeArguments.Last();
                         multiExpressionMethods.Add(new(methodSymbol.TypeArguments[0], outputType, argDetailObjectsForMethod));
                     }
                 }
@@ -94,7 +97,7 @@ namespace ReactiveMarbles.PropertyChanged
             }
         }
 
-        private static string ProcessClass(ITypeSymbol classSymbol, List<ArgumentDetail> propertyExpressionDetailObjects, List<MethodDetail> multiExpressionMethods)
+        private static string ProcessClass(ITypeSymbol classSymbol, List<ArgumentDetail> propertyExpressionDetailObjects, HashSet<MethodDetail> multiExpressionMethods)
         {
             if (!classSymbol.ContainingSymbol.Equals(classSymbol.ContainingNamespace, SymbolEqualityComparer.Default))
             {
@@ -195,17 +198,17 @@ namespace ReactiveMarbles.PropertyChanged
             return observableChainBuilder.ToString();
         }
 
-        private static void ProcessMultiExpressionMethods(StringBuilder source, List<MethodDetail> multiExpressionMethods)
+        private static void ProcessMultiExpressionMethods(StringBuilder source, HashSet<MethodDetail> multiExpressionMethods)
         {
+            // foreach (var method in multiExpressionMethods.GroupBy(x => string.Join("-", x.Arguments.Select(x => x.InputType.ToDisplayString() + x.OutputType.ToDisplayString()))).Select(x => x.First()))
             foreach (var method in multiExpressionMethods)
             {
-                string bodyCode = WhenChangedClassBuilder.GetMultiExpressionMethodBody(method.Arguments.Count - 1);
+                string bodyCode = WhenChangedClassBuilder.GetMultiExpressionMethodBody(method.Arguments.Count);
                 var tempReturnTypes = method.Arguments
-                    .Take(method.Arguments.Count - 1)
                     .Select(x => x.OutputType.ToDisplayString())
                     .ToList();
 
-                var parametersCode = WhenChangedClassBuilder.GetMultiExpressionMethodParameters(method.InputType.ToDisplayString(), method.OutputType.ToDisplayString(), tempReturnTypes, method.Arguments.Count - 1);
+                var parametersCode = WhenChangedClassBuilder.GetMultiExpressionMethodParameters(method.InputType.ToDisplayString(), method.OutputType.ToDisplayString(), tempReturnTypes, method.Arguments.Count);
                 var methodCode = WhenChangedClassBuilder.GetMultiExpressionMethod(method.InputType.ToDisplayString(), method.OutputType.ToDisplayString(), parametersCode, bodyCode);
                 source.Append(methodCode);
             }

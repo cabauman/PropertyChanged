@@ -17,7 +17,7 @@ namespace ReactiveMarbles.PropertyChanged
                 sb.AppendLine($"        Expression<Func<{inputType}, {tempReturnTypes[i]}>> propertyExpression{i + 1},");
             }
 
-            sb.Append("            Func<");
+            sb.Append("        Func<");
             for (int i = 0; i < counter; i++)
             {
                 sb.Append($"{tempReturnTypes[i]}, ");
