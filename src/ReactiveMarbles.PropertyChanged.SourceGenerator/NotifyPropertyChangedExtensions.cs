@@ -6,6 +6,7 @@ using System;
 using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reactive.Linq;
+using System.Reflection;
 
 /// <summary>
 /// Provides extension methods for the notify property changed extensions.

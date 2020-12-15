@@ -7,10 +7,16 @@ using Microsoft.CodeAnalysis;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed class MethodDetailArgumentOutputTypesComparer : IEqualityComparer<MethodDetail>
+    internal sealed class MethodTypeArgumentsComparer : IEqualityComparer<MethodDetail>
     {
         public bool Equals(MethodDetail x, MethodDetail y)
         {
+            if (!SymbolEqualityComparer.Default.Equals(x?.InputType, y?.InputType) ||
+                !SymbolEqualityComparer.Default.Equals(x?.OutputType, y?.OutputType))
+            {
+                return false;
+            }
+
             if (x?.Arguments == null && y?.Arguments == null)
             {
                 return true;
@@ -29,15 +35,6 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 var outputTypeX = x.Arguments[i]?.OutputType;
                 var outputTypeY = y.Arguments[i]?.OutputType;
 
-                if (outputTypeX == null && outputTypeY == null)
-                {
-                    continue;
-                }
-                else if (outputTypeX == null || outputTypeY == null)
-                {
-                    return false;
-                }
-
                 if (!SymbolEqualityComparer.Default.Equals(outputTypeX, outputTypeY))
                 {
                     return false;
@@ -50,6 +47,8 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
         public int GetHashCode(MethodDetail obj)
         {
             int hashCode = -2037187358;
+            hashCode = (hashCode * -1521134295) + SymbolEqualityComparer.Default.GetHashCode(obj.InputType);
+            hashCode = (hashCode * -1521134295) + SymbolEqualityComparer.Default.GetHashCode(obj.OutputType);
             foreach (var argument in obj.Arguments)
             {
                 hashCode = (hashCode * -1521134295) + SymbolEqualityComparer.Default.GetHashCode(argument.OutputType);

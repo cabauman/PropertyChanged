@@ -43,8 +43,8 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 return;
             }
 
-            var argDetailObjects = new List<ArgumentDetail>(); // consider renaming to expressionArguments
-            var multiExpressionMethods = new HashSet<MethodDetail>(new MethodDetailArgumentOutputTypesComparer());
+            var argDetailObjects = new List<ExpressionArgument>(); // consider renaming to expressionArguments
+            var multiExpressionMethods = new HashSet<MethodDetail>(new MethodTypeArgumentsComparer());
             foreach (var invocationExpression in syntaxReceiver.WhenChangedMethods)
             {
                 var model = compilation.GetSemanticModel(invocationExpression.SyntaxTree);
@@ -53,7 +53,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 if (symbol is IMethodSymbol methodSymbol)
                 {
                     var arguments = invocationExpression.ArgumentList.Arguments;
-                    var argDetailObjectsForMethod = new List<ArgumentDetail>(arguments.Count);
+                    var argDetailObjectsForMethod = new List<ExpressionArgument>(arguments.Count);
 
                     var isValid = true;
                     foreach (var argument in arguments)
@@ -107,7 +107,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
             }
         }
 
-        private static string ProcessClass(ITypeSymbol classSymbol, List<ArgumentDetail> propertyExpressionDetailObjects, HashSet<MethodDetail> multiExpressionMethods)
+        private static string ProcessClass(ITypeSymbol classSymbol, List<ExpressionArgument> propertyExpressionDetailObjects, HashSet<MethodDetail> multiExpressionMethods)
         {
             if (!classSymbol.ContainingSymbol.Equals(classSymbol.ContainingNamespace, SymbolEqualityComparer.Default))
             {
@@ -133,7 +133,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
             return source;
         }
 
-        private static void ProcessMethod(StringBuilder source, List<ArgumentDetail> propertyExpressionDetailObjects)
+        private static void ProcessMethod(StringBuilder source, List<ExpressionArgument> propertyExpressionDetailObjects)
         {
             var (lambdaExpression, inputTypeSymbol, outputTypeSymbol) = propertyExpressionDetailObjects.First();
 
