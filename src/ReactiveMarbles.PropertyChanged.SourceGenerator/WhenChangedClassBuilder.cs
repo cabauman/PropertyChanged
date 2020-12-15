@@ -119,29 +119,6 @@ using System.Reactive.Linq;
 
 public static partial class NotifyPropertyChangedExtensions
 {{
-    private static IObservable<T> GenerateObservable<TObj, T>(
-            TObj parent,
-            string memberName,
-            Func<TObj, T> getter)
-        where TObj : INotifyPropertyChanged
-    {{
-        {{
-            return Observable.FromEvent<PropertyChangedEventHandler, (object Sender, PropertyChangedEventArgs Args)>(
-                    handler =>
-                    {{
-                        {{
-                            void Handler(object sender, PropertyChangedEventArgs e) => handler((sender, e));
-                            return Handler;
-                        }}
-                    }},
-                    x => parent.PropertyChanged += x,
-                    x => parent.PropertyChanged -= x)
-                .Where(x => x.Args.PropertyName == memberName)
-                .Select(x => getter(parent))
-                .StartWith(getter(parent));
-        }}
-    }}
-
     {body}
 }}
 ";
