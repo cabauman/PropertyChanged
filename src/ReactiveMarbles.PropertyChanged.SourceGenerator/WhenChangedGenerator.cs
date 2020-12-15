@@ -33,12 +33,15 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 
         public void Execute(GeneratorExecutionContext context)
         {
+            CSharpParseOptions options = (context.Compilation as CSharpCompilation).SyntaxTrees[0].Options as CSharpParseOptions;
+            var stubSource = WhenChangedClassBuilder.GetWhenChangedStubClass();
+            Compilation compilation = context.Compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(SourceText.From(stubSource, Encoding.UTF8), options));
+            context.AddSource($"WhenChanged.Stubs.g.cs", SourceText.From(stubSource, Encoding.UTF8));
+
             if (context.SyntaxReceiver is not SyntaxReceiver syntaxReceiver)
             {
                 return;
             }
-
-            var compilation = context.Compilation;
 
             var argDetailObjects = new List<ArgumentDetail>(); // consider renaming to expressionArguments
             var multiExpressionMethods = new HashSet<MethodDetail>(new MethodDetailArgumentOutputTypesComparer());
@@ -47,11 +50,12 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 var model = compilation.GetSemanticModel(invocationExpression.SyntaxTree);
                 var symbol = model.GetSymbolInfo(invocationExpression).Symbol;
 
-                if (symbol is IMethodSymbol methodSymbol && methodSymbol.ContainingAssembly.Name.Equals(SourceGeneratorAssemblyName))
+                if (symbol is IMethodSymbol methodSymbol)
                 {
                     var arguments = invocationExpression.ArgumentList.Arguments;
                     var argDetailObjectsForMethod = new List<ArgumentDetail>(arguments.Count);
 
+                    var isValid = true;
                     foreach (var argument in arguments)
                     {
                         if (argument.Expression is LambdaExpressionSyntax lambdaExpression)
@@ -70,8 +74,14 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                                 Diagnostic.Create(
                                     descriptor: InvalidMemberExpressionError,
                                     location: invocationExpression.GetLocation()));
-                            return;
+                            isValid = false;
+                            break;
                         }
+                    }
+
+                    if (!isValid)
+                    {
+                        continue;
                     }
 
                     argDetailObjects.AddRange(argDetailObjectsForMethod);
@@ -92,7 +102,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 string classSource = ProcessClass(group.Key, group.ToList(), multiExpressionMethods);
                 if (classSource != null)
                 {
-                    context.AddSource($"{group.Key.Name}.WhenChanged.g.cs", SourceText.From(classSource, Encoding.UTF8));
+                    context.AddSource($"WhenChanged.{group.Key.Name}.g.cs", SourceText.From(classSource, Encoding.UTF8));
                 }
             }
         }

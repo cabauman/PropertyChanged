@@ -3,9 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using System.Text;
 
-namespace ReactiveMarbles.PropertyChanged
+namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
     internal static class WhenChangedClassBuilder
     {
@@ -89,7 +91,7 @@ namespace ReactiveMarbles.PropertyChanged
 
         public static string GetMapEntry(string key, string valueChain)
         {
-        return $@"
+            return $@"
         {{
             ""{key}"",
             source => Observable.Return(source){valueChain}
@@ -115,30 +117,44 @@ using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reactive.Linq;
 
-public static class {className}WhenChanged
+public static partial class NotifyPropertyChangedExtensions
 {{
     private static IObservable<T> GenerateObservable<TObj, T>(
-        TObj parent,
-        string memberName,
-        Func<TObj, T> getter)
+            TObj parent,
+            string memberName,
+            Func<TObj, T> getter)
         where TObj : INotifyPropertyChanged
     {{
-        return Observable.FromEvent<PropertyChangedEventHandler, (object Sender, PropertyChangedEventArgs Args)>(
-                handler =>
-                {{
-                    void Handler(object sender, PropertyChangedEventArgs e) => handler((sender, e));
-                    return Handler;
-                }},
-                x => parent.PropertyChanged += x,
-                x => parent.PropertyChanged -= x)
-            .Where(x => x.Args.PropertyName == memberName)
-            .Select(x => getter(parent))
-            .StartWith(getter(parent));
+        {{
+            return Observable.FromEvent<PropertyChangedEventHandler, (object Sender, PropertyChangedEventArgs Args)>(
+                    handler =>
+                    {{
+                        {{
+                            void Handler(object sender, PropertyChangedEventArgs e) => handler((sender, e));
+                            return Handler;
+                        }}
+                    }},
+                    x => parent.PropertyChanged += x,
+                    x => parent.PropertyChanged -= x)
+                .Where(x => x.Args.PropertyName == memberName)
+                .Select(x => getter(parent))
+                .StartWith(getter(parent));
+        }}
     }}
 
     {body}
 }}
 ";
+        }
+
+        public static string GetWhenChangedStubClass()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            const string resourceName = "ReactiveMarbles.PropertyChanged.SourceGenerator.NotifyPropertyChangedExtensions.cs";
+
+            using Stream stream = assembly.GetManifestResourceStream(resourceName);
+            using StreamReader reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
     }
 }

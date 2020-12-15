@@ -43,10 +43,12 @@ namespace Sample
             Expression<Func<Program, string>> myExpression = x => x.MyString;
 
             // NotifyPropertyChangedExtensions.WhenChanged(this, GetExpression());
-            // NotifyPropertyChangedExtensions.WhenChanged(this, myExpression);
-            NotifyPropertyChangedExtensions.WhenChanged(this, x => x.MyString);
-            this.WhenChanged(x => x.Child.MyString);
-            this.WhenChanged(x => x.Child, x => x.MyString, (a, b) => a.ToString() + b);
+            NotifyPropertyChangedExtensions.WhenChanged(this, myExpression);
+
+            // NotifyPropertyChangedExtensions.WhenChanged(this, x => x.MyString);
+            // this.WhenChanged(x => x.Child, x => x.MyString, (a, b) => a.ToString() + b);
+            // this.WhenChanged(x => x.Child.MyString);
+            // this.WhenChanged(x => x.Child, x => x.MyString, (a, b) => a.ToString() + b);
         }
 
         public Expression<Func<Program, string>> GetExpression() => x => x.MyString;
@@ -90,7 +92,7 @@ namespace Sample
             Assert.Empty(generatorDiagnostics);
             Assert.Empty(newCompilation.GetDiagnostics());
 
-            var generatedSource = newCompilation.SyntaxTrees.Last().ToString();
+            var generatedSource = newCompilation.SyntaxTrees.First().ToString();
         }
 
         private static Compilation CreateCompilation(string source, string assemblyPath) =>

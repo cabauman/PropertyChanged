@@ -2,7 +2,9 @@
 // ReactiveUI Association Incorporated licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System;
 using System.ComponentModel;
+using System.Linq.Expressions;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator.Sample
 {
@@ -16,7 +18,13 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator.Sample
 
         internal SampleClass()
         {
-            var stream = this.WhenChanged(x => x.MyClass.MyString);
+            var myClass = new SampleClass();
+            Expression<Func<SampleClass, string>> expression = x => x.MyClass.MyClass.MyClass.MyString;
+
+            // var stream = NotifyPropertyChangedExtensions.WhenChanged(MyClass, x => x.MyClass.MyString);
+            // this.WhenChanged(expression);
+            NotifyPropertyChangedExtensions.WhenChanged(this, expression);
+            this.WhenChanged(x => x.MyString, x => x.MyString, (a, b) => a + b);
         }
 
         /// <summary>
