@@ -458,12 +458,12 @@ public static partial class NotifyPropertyChangedExtensions
         throw new Exception("The impementation should have been generated.");
     }
 
-    private static IObservable<T> GenerateObservable<T>(
-        INotifyPropertyChanged parent,
-        MemberInfo memberInfo,
-        Func<INotifyPropertyChanged, T> getter)
+    private static IObservable<T> GenerateObservable<TObj, T>(
+            TObj parent,
+            string memberName,
+            Func<TObj, T> getter)
+        where TObj : INotifyPropertyChanged
     {
-        var memberName = memberInfo.Name;
         return Observable.FromEvent<PropertyChangedEventHandler, T>(
                 handler =>
                 {
