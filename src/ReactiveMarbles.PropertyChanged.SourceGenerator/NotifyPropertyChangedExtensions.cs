@@ -464,21 +464,21 @@ public static partial class NotifyPropertyChangedExtensions
             Func<TObj, T> getter)
         where TObj : INotifyPropertyChanged
     {
-        return Observable.FromEvent<PropertyChangedEventHandler, T>(
-                handler =>
+        return Observable.Create<T>(
+                observer =>
                 {
-                    void Handler(object sender, PropertyChangedEventArgs e)
+                    PropertyChangedEventHandler handler = (object sender, PropertyChangedEventArgs e) =>
                     {
                         if (e.PropertyName == memberName)
                         {
-                            handler(getter(parent));
+                            observer.OnNext(getter(parent));
                         }
-                    }
+                    };
 
-                    return Handler;
-                },
-                x => parent.PropertyChanged += x,
-                x => parent.PropertyChanged -= x)
+                    parent.PropertyChanged += handler;
+
+                    return Disposable.Create((parent, handler), x => x.parent.PropertyChanged -= x.handler);
+                })
             .StartWith(getter(parent));
     }
 }
