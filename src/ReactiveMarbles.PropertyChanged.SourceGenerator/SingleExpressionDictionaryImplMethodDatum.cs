@@ -4,9 +4,9 @@
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed record SingleExpressionDictionaryImplMethodDatum
+    internal sealed record SingleExpressionDictionaryImplMethodDatum : MethodDatum
     {
-        public SingleExpressionDictionaryImplMethodDatum(string inputType, string outputType, MapBlueprint map)
+        public SingleExpressionDictionaryImplMethodDatum(string inputType, string outputType, MapDatum map)
         {
             InputType = inputType;
             OutputType = outputType;
@@ -17,6 +17,11 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 
         public string OutputType { get; }
 
-        public MapBlueprint Map { get; }
+        public MapDatum Map { get; }
+
+        public override string BuildSource(ISourceCreator sourceCreator)
+        {
+            return sourceCreator.Create(this);
+        }
     }
 }

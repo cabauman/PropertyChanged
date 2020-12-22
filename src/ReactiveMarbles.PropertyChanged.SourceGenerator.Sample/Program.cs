@@ -17,7 +17,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator.Sample
 
             // myClass.WhenChanged(x => x.MyString, x => x.MyClass, (a, b) => a).Where(x => x != null).Subscribe(Console.WriteLine);
             // myClass.WhenChanged(x => x.MyString);
-            // myClass.WhenChanged(a => a.MyString);
+            myClass.WhenChanged(x => string.Empty).Subscribe(Console.WriteLine);
 
             // myClass.WhenChanged(x => x.MyClass.MyString, x => x.MyString, (a, b) => a + b);
             // myClass.WhenChanged(x => x.MyString, x => x.MyString, (a, b) => a + b);

@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -23,8 +22,8 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 
         private static readonly DiagnosticDescriptor InvalidMemberExpressionError = new DiagnosticDescriptor(
             id: "RM001",
-            title: "Invalid member expression",
-            messageFormat: "The expression can only include property and field access",
+            title: "Invalid member access expression",
+            messageFormat: "The expression must be inline (e.g. not a variable or method invocation).",
             category: "CA1001",
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -53,26 +52,33 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 return;
             }
 
-            var inputTypeGroups = requiredData.ExpressionArguments
+            var classData = requiredData.ExpressionArguments
                 .GroupBy(x => x.InputType)
                 .Select(x => x
                     .GroupBy(y => y.OutputType)
                     .Select(y => y
                         .DistinctBy(z => z.LambdaExpression.Body.ToString())
-                        .ToOuputGroup())
-                    .ToInputGroup(x.Key))
+                        .ToOuputTypeGroup())
+                    .ToInputTypeGroup(x.Key))
                 .GroupJoin(
                     requiredData.MultiExpressionMethodData,
                     x => x.InputTypeName,
-                    x => x.InputType,
-                    (a, b) => (SingleExpressionMethodData: a, MultiExpressionMethodData: b));
+                    x => x.InputTypeName,
+                    (inputTypeGroup, multiExpressionMethodData) =>
+                    {
+                        var allMethodData = inputTypeGroup
+                            .OutputTypeGroups
+                            .Select(CreateSingleExpressionMethodDatum)
+                            .Concat(multiExpressionMethodData);
 
-            List<ClassBlueprint> classes = ConvertToClassBlueprints(inputTypeGroups);
+                        return new ClassDatum(inputTypeGroup.InputTypeName, allMethodData);
+                    });
 
-            var sourceBuilder = new SourceBuilder();
-            foreach (var @class in classes)
+            var sourceCreator = new StringBuilderSourceCreator();
+            foreach (var @class in classData)
             {
-                var source = sourceBuilder.Build(@class);
+                var source = sourceCreator.Create(@class);
+                context.AddSource($"WhenChanged.{@class.InputTypeName}.g.cs", SourceText.From(source, Encoding.UTF8));
             }
         }
 
@@ -90,7 +96,6 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 if (symbol is IMethodSymbol methodSymbol)
                 {
                     var arguments = invocationExpression.ArgumentList.Arguments;
-                    var expressionArgumentsForMethod = new List<ExpressionArgument>(arguments.Count);
 
                     foreach (var argument in arguments)
                     {
@@ -100,10 +105,9 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                             {
                                 var lambdaInputType = methodSymbol.TypeArguments[0];
                                 var lambdaOutputType = model.GetTypeInfo(lambdaExpression.Body).Type;
-                                expressionArguments.Add(new(lambdaExpression, lambdaInputType, lambdaOutputType));
-
-                                // TODO: Consider using GetChain and saving it to avoid recalculating it again later.
-                                allExpressionArgumentsAreValid &= ValidateExpressionChain(lambdaExpression);
+                                var expressionChain = GetExpressionChain(lambdaExpression);
+                                expressionArguments.Add(new(lambdaExpression, expressionChain, lambdaInputType, lambdaOutputType));
+                                allExpressionArgumentsAreValid &= expressionChain != null;
                             }
                             else
                             {
@@ -128,77 +132,43 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
             return new RequiredData(allExpressionArgumentsAreValid, expressionArguments, multiExpressionMethodData);
         }
 
-        private static List<ClassBlueprint> ConvertToClassBlueprints(IEnumerable<(InputGroup<ExpressionArgument> SingleExpressionMethodData, IEnumerable<MultiExpressionMethodDatum> MultiExpressionMethodData)> inputTypeGroups)
+        private static MethodDatum CreateSingleExpressionMethodDatum(OutputTypeGroup<ExpressionArgument> outputTypeGroup)
         {
-            var classes = new List<ClassBlueprint>();
+            MethodDatum methodDatum = null;
 
-            foreach (var inputTypeGroup in inputTypeGroups)
+            var (lambdaExpression, expressionChain, inputTypeSymbol, outputTypeSymbol) = outputTypeGroup.ArgumentData.First();
+            var (inputTypeName, outputTypeName) = (inputTypeSymbol.ToDisplayString(), outputTypeSymbol.ToDisplayString());
+
+            if (outputTypeGroup.ArgumentData.Count == 1)
             {
-                var dictionaryImplementationMethodData = new List<SingleExpressionDictionaryImplMethodDatum>();
-                var optimizedImplementationMethodData = new List<SingleExpressionOptimizedImplMethodDatum>();
-                foreach (var outputTypeGroup in inputTypeGroup.SingleExpressionMethodData.OutputTypeGroups)
+                methodDatum = new SingleExpressionOptimizedImplMethodDatum(inputTypeName, outputTypeName, expressionChain);
+            }
+            else if (outputTypeGroup.ArgumentData.Count > 1)
+            {
+                // TODO: Consider including namespace to prevent potential name conflicts.
+                var mapName = $"{inputTypeSymbol.Name}To{outputTypeSymbol.Name}Map";
+
+                var entries = new List<MapEntryDatum>(outputTypeGroup.ArgumentData.Count);
+                foreach (var argumentDatum in outputTypeGroup.ArgumentData)
                 {
-                    var (lambdaExpression, inputTypeSymbol, outputTypeSymbol) = outputTypeGroup.ArgumentData.First();
-                    var (inputTypeName, outputTypeName) = (inputTypeSymbol.ToDisplayString(), outputTypeSymbol.ToDisplayString());
-
-                    if (outputTypeGroup.ArgumentData.Count == 1)
-                    {
-                        var methodData = new SingleExpressionOptimizedImplMethodDatum(inputTypeName, outputTypeName, GetChain(lambdaExpression));
-                        optimizedImplementationMethodData.Add(methodData);
-                    }
-                    else if (outputTypeGroup.ArgumentData.Count > 1)
-                    {
-                        // TODO: Consider including namespace to prevent potential name conflicts.
-                        var mapName = $"{inputTypeSymbol.Name}To{outputTypeSymbol.Name}Map";
-
-                        var entries = new List<MapEntryBlueprint>(outputTypeGroup.ArgumentData.Count);
-                        foreach (var argumentDatum in outputTypeGroup.ArgumentData)
-                        {
-                            var mapKey = lambdaExpression.Body.ToString();
-                            var mapEntry = new MapEntryBlueprint(mapKey, GetChain(lambdaExpression));
-                            entries.Add(mapEntry);
-                        }
-
-                        var map = new MapBlueprint(mapName, entries);
-                        var methodData = new SingleExpressionDictionaryImplMethodDatum(inputTypeName, outputTypeName, map);
-                        dictionaryImplementationMethodData.Add(methodData);
-                    }
+                    var mapKey = argumentDatum.LambdaExpression.Body.ToString();
+                    var mapEntry = new MapEntryDatum(mapKey, argumentDatum.ExpressionChain);
+                    entries.Add(mapEntry);
                 }
 
-                classes.Add(new(dictionaryImplementationMethodData, optimizedImplementationMethodData, inputTypeGroup.MultiExpressionMethodData));
+                var map = new MapDatum(mapName, entries);
+                methodDatum = new SingleExpressionDictionaryImplMethodDatum(inputTypeName, outputTypeName, map);
             }
 
-            return classes;
+            return methodDatum;
         }
 
-        private static bool ValidateExpressionChain(LambdaExpressionSyntax lambdaExpression)
-        {
-            var expression = lambdaExpression.ExpressionBody;
-            var expressionChain = expression as MemberAccessExpressionSyntax;
-
-            while (expressionChain != null)
-            {
-                expression = expressionChain.Expression;
-                expressionChain = expression as MemberAccessExpressionSyntax;
-            }
-
-            if (expression is not IdentifierNameSyntax firstLinkInChain)
-            {
-                // It stopped before reaching the lambda parameter, so the expression is invalid.
-                return false;
-            }
-
-            var lambdaParameterName = (lambdaExpression as SimpleLambdaExpressionSyntax)?.Parameter.Identifier.ToString() ??
-                (lambdaExpression as ParenthesizedLambdaExpressionSyntax)?.ParameterList.Parameters[0].Identifier.ToString();
-
-            return string.Equals(lambdaParameterName, firstLinkInChain.Identifier.ToString(), StringComparison.InvariantCulture);
-        }
-
-        private static List<string> GetChain(LambdaExpressionSyntax lambdaExpression)
+        private static List<string> GetExpressionChain(LambdaExpressionSyntax lambdaExpression)
         {
             var members = new List<string>();
             var expression = lambdaExpression.ExpressionBody;
             var expressionChain = expression as MemberAccessExpressionSyntax;
+
             while (expressionChain != null)
             {
                 members.Add(expressionChain.Name.ToString());
@@ -206,14 +176,23 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 expressionChain = expression as MemberAccessExpressionSyntax;
             }
 
-            if (expression is not IdentifierNameSyntax)
+            if (expression is not IdentifierNameSyntax firstLinkInChain)
             {
-                // TODO: It stopped before reaching the lambda parameter, so the expression is invalid.
+                // It stopped before reaching the lambda parameter, so the expression is invalid.
+                return null;
             }
 
-            members.Reverse();
+            var lambdaParameterName =
+                (lambdaExpression as SimpleLambdaExpressionSyntax)?.Parameter.Identifier.ToString() ??
+                (lambdaExpression as ParenthesizedLambdaExpressionSyntax)?.ParameterList.Parameters[0].Identifier.ToString();
 
-            return members;
+            if (string.Equals(lambdaParameterName, firstLinkInChain.Identifier.ToString(), StringComparison.InvariantCulture))
+            {
+                members.Reverse();
+                return members;
+            }
+
+            return null;
         }
     }
 }

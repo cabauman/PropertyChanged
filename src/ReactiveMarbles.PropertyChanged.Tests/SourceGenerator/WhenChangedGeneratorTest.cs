@@ -40,13 +40,14 @@ namespace Sample
 
         public Program()
         {
-            Expression<Func<Program, string>> myExpression = x => x.MyString;
-
+            // Expression<Func<Program, string>> myExpression = x => x.MyString;
             // NotifyPropertyChangedExtensions.WhenChanged(this, GetExpression());
             // NotifyPropertyChangedExtensions.WhenChanged(this, myExpression);
-
             // NotifyPropertyChangedExtensions.WhenChanged(this, x => x.MyString);
-            // this.WhenChanged(x => x.Child, x => x.MyString, (a, b) => a.ToString() + b);
+            this.WhenChanged(x => x.Child, x => x.MyString, (a, b) => a.ToString() + b);
+            this.WhenChanged(x => x.Child, x => x.MyString, (a, b) => a.ToString() + b);
+            this.WhenChanged(x => x.Child.MyString);
+            this.WhenChanged(x => x.Child.MyString);
             this.WhenChanged(x => x.Child.Child.MyString);
         }
 

@@ -8,5 +8,8 @@ using System.Text;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal record RequiredData(bool AllExpressionArgumentsAreValid, List<ExpressionArgument> ExpressionArguments, HashSet<MultiExpressionMethodDatum> MultiExpressionMethodData);
+    internal sealed record RequiredData(
+        bool AllExpressionArgumentsAreValid,
+        List<ExpressionArgument> ExpressionArguments,
+        HashSet<MultiExpressionMethodDatum> MultiExpressionMethodData);
 }

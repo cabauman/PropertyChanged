@@ -6,20 +6,16 @@ using System.Collections.Generic;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed class MapBlueprint
+    internal sealed record MapEntryDatum
     {
-        public MapBlueprint(string mapName, List<MapEntryBlueprint> entries)
+        public MapEntryDatum(string key, List<string> memberNames)
         {
-            MapName = mapName;
-            Entries = entries;
+            Key = key;
+            MemberNames = memberNames;
         }
 
-        public string InputType { get; }
+        public string Key { get; }
 
-        public string OutputType { get; }
-
-        public string MapName { get; }
-
-        public List<MapEntryBlueprint> Entries { get; }
+        public List<string> MemberNames { get; }
     }
 }

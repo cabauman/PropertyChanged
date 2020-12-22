@@ -8,13 +8,13 @@ using System.Linq;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed class MultiExpressionMethodDatum : IEquatable<MultiExpressionMethodDatum>
+    internal sealed record MultiExpressionMethodDatum : MethodDatum, IEquatable<MultiExpressionMethodDatum>
     {
         public MultiExpressionMethodDatum(IEnumerable<string> typeNames)
         {
             var list = typeNames.ToArray();
-            InputType = list[0];
-            OutputType = list[list.Length - 1];
+            InputTypeName = list[0];
+            OutputTypeName = list[list.Length - 1];
             TempReturnTypes = new List<string>(list.Length - 2);
             for (int i = 1; i < list.Length - 1; i++)
             {
@@ -22,41 +22,53 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
             }
         }
 
-        public string InputType { get; }
+        public string InputTypeName { get; }
 
-        public string OutputType { get; }
+        public string OutputTypeName { get; }
 
         public List<string> TempReturnTypes { get; }
 
-        public static bool operator ==(MultiExpressionMethodDatum left, MultiExpressionMethodDatum right)
+        public override string BuildSource(ISourceCreator sourceCreator)
         {
-            return EqualityComparer<MultiExpressionMethodDatum>.Default.Equals(left, right);
-        }
-
-        public static bool operator !=(MultiExpressionMethodDatum left, MultiExpressionMethodDatum right)
-        {
-            return !(left == right);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as MultiExpressionMethodDatum);
+            return sourceCreator.Create(this);
         }
 
         public bool Equals(MultiExpressionMethodDatum other)
         {
-            return other != null &&
-                   InputType == other.InputType &&
-                   OutputType == other.OutputType &&
-                   EqualityComparer<List<string>>.Default.Equals(TempReturnTypes, other.TempReturnTypes);
+            if (other is null)
+            {
+                return false;
+            }
+
+            var result =
+                InputTypeName == other.InputTypeName &&
+                OutputTypeName == other.OutputTypeName &&
+                TempReturnTypes.Count == other.TempReturnTypes.Count;
+
+            if (!result)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < TempReturnTypes.Count; ++i)
+            {
+                result &= EqualityComparer<string>.Default.Equals(TempReturnTypes[i], other.TempReturnTypes[i]);
+            }
+
+            return result;
         }
 
         public override int GetHashCode()
         {
             int hashCode = 1230885993;
-            hashCode = (hashCode * -1521134295) + EqualityComparer<string>.Default.GetHashCode(InputType);
-            hashCode = (hashCode * -1521134295) + EqualityComparer<string>.Default.GetHashCode(OutputType);
-            hashCode = (hashCode * -1521134295) + EqualityComparer<List<string>>.Default.GetHashCode(TempReturnTypes);
+            hashCode = (hashCode * -1521134295) + EqualityComparer<string>.Default.GetHashCode(InputTypeName);
+            hashCode = (hashCode * -1521134295) + EqualityComparer<string>.Default.GetHashCode(OutputTypeName);
+
+            foreach (var typeName in TempReturnTypes)
+            {
+                hashCode = (hashCode * -1521134295) + EqualityComparer<string>.Default.GetHashCode(typeName);
+            }
+
             return hashCode;
         }
     }

@@ -11,9 +11,11 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
     internal static class WhenChangedClassBuilder
     {
-        public static string GetMultiExpressionMethodParameters(string inputType, string outputType, List<string> tempReturnTypes, int counter)
+        public static string GetMultiExpressionMethodParameters(string inputType, string outputType, List<string> tempReturnTypes)
         {
             var sb = new StringBuilder();
+            var counter = tempReturnTypes.Count;
+
             for (int i = 0; i < counter; i++)
             {
                 sb.AppendLine($"        Expression<Func<{inputType}, {tempReturnTypes[i]}>> propertyExpression{i + 1},");
@@ -108,7 +110,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 ";
         }
 
-        public static string GetClass(string className, string body)
+        public static string GetClass(string body)
         {
             return $@"
 using System;

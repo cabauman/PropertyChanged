@@ -18,13 +18,12 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator.Sample
 
         internal SampleClass()
         {
-            var myClass = new SampleClass();
-            Expression<Func<SampleClass, string>> expression = x => x.MyClass.MyClass.MyClass.MyString;
-
+            // var myClass = new SampleClass();
+            // Expression<Func<SampleClass, string>> expression = x => x.MyClass.MyClass.MyClass.MyString;
             // var stream = NotifyPropertyChangedExtensions.WhenChanged(MyClass, x => x.MyClass.MyString);
             // this.WhenChanged(expression);
-            NotifyPropertyChangedExtensions.WhenChanged(this, expression);
-            this.WhenChanged(x => x.MyString, x => x.MyString, (a, b) => a + b);
+            // NotifyPropertyChangedExtensions.WhenChanged(this, expression);
+            // this.WhenChanged(x => x.MyString, x => x.MyString, (a, b) => a + b);
         }
 
         /// <summary>

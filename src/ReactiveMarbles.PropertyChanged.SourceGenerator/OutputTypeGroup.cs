@@ -6,5 +6,5 @@ using System.Collections.Generic;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed record OutputGroup<T>(List<T> ArgumentData);
+    internal sealed record OutputTypeGroup<T>(List<T> ArgumentData);
 }

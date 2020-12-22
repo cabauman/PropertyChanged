@@ -6,5 +6,16 @@ using System.Collections.Generic;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed record InputGroup<T>(string InputTypeName, IEnumerable<OutputGroup<T>> OutputTypeGroups);
+    internal sealed record ClassDatum
+    {
+        public ClassDatum(string inputTypeName, IEnumerable<MethodDatum> methodData)
+        {
+            InputTypeName = inputTypeName;
+            MethodData = methodData;
+        }
+
+        public string InputTypeName { get; }
+
+        public IEnumerable<MethodDatum> MethodData { get; }
+    }
 }

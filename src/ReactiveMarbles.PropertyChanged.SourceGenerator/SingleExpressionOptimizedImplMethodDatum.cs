@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed record SingleExpressionOptimizedImplMethodDatum
+    internal sealed record SingleExpressionOptimizedImplMethodDatum : MethodDatum
     {
         public SingleExpressionOptimizedImplMethodDatum(string inputType, string outputType, List<string> memberNames)
         {
@@ -20,5 +20,10 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
         public string OutputType { get; }
 
         public List<string> MemberNames { get; }
+
+        public override string BuildSource(ISourceCreator sourceCreator)
+        {
+            return sourceCreator.Create(this);
+        }
     }
 }

@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal static class MyExtensions
+    internal static class Extensions
     {
         public static IEnumerable<T> DistinctBy<T, T2>(this IEnumerable<T> source, Func<T, T2> func)
         {
@@ -18,14 +18,14 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 .Select(x => x.First());
         }
 
-        public static InputGroup<T> ToInputGroup<T>(this IEnumerable<OutputGroup<T>> source, ITypeSymbol inputType)
+        public static InputTypeGroup<T> ToInputTypeGroup<T>(this IEnumerable<OutputTypeGroup<T>> source, ITypeSymbol inputType)
         {
-            return new InputGroup<T>(inputType.Name, source);
+            return new InputTypeGroup<T>(inputType.ToDisplayString(), source);
         }
 
-        public static OutputGroup<T> ToOuputGroup<T>(this IEnumerable<T> source)
+        public static OutputTypeGroup<T> ToOuputTypeGroup<T>(this IEnumerable<T> source)
         {
-            return new OutputGroup<T>(source.ToList());
+            return new OutputTypeGroup<T>(source.ToList());
         }
     }
 }

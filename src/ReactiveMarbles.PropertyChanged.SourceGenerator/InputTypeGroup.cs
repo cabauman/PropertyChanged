@@ -2,13 +2,9 @@
 // ReactiveUI Association Incorporated licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Collections.Generic;
+
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed class SourceBuilder
-    {
-        public string Build(ClassBlueprint @class)
-        {
-            return string.Empty;
-        }
-    }
+    internal sealed record InputTypeGroup<T>(string InputTypeName, IEnumerable<OutputTypeGroup<T>> OutputTypeGroups);
 }
