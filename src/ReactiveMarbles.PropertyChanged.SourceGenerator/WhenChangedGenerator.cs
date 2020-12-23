@@ -18,9 +18,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
     [Generator]
     internal sealed class WhenChangedGenerator : ISourceGenerator
     {
-        private static readonly string SourceGeneratorAssemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-
-        private static readonly DiagnosticDescriptor InvalidMemberExpressionError = new DiagnosticDescriptor(
+        internal static readonly DiagnosticDescriptor InvalidMemberExpressionError = new DiagnosticDescriptor(
             id: "RM001",
             title: "Invalid member access expression",
             messageFormat: "The expression must be inline (e.g. not a variable or method invocation).",
@@ -56,9 +54,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 .GroupBy(x => x.InputType)
                 .Select(x => x
                     .GroupBy(y => y.OutputType)
-                    .Select(y => y
-                        .DistinctBy(z => z.LambdaExpression.Body.ToString())
-                        .ToOuputTypeGroup())
+                    .Select(y => y.ToOuputTypeGroup())
                     .ToInputTypeGroup(x.Key))
                 .GroupJoin(
                     requiredData.MultiExpressionMethodData,
@@ -72,7 +68,8 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                             .Concat(multiExpressionMethodData);
 
                         return new ClassDatum(inputTypeGroup.InputTypeName, allMethodData);
-                    });
+                    })
+                .ToList();
 
             var sourceCreator = new StringBuilderSourceCreator();
             foreach (var @class in classData)
@@ -85,7 +82,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
         private static RequiredData ExtractRequiredData(GeneratorExecutionContext context, Compilation compilation, SyntaxReceiver syntaxReceiver)
         {
             var allExpressionArgumentsAreValid = true;
-            var expressionArguments = new List<ExpressionArgument>();
+            var expressionArguments = new HashSet<ExpressionArgument>();
             var multiExpressionMethodData = new HashSet<MultiExpressionMethodDatum>();
 
             foreach (var invocationExpression in syntaxReceiver.WhenChangedMethods)
@@ -106,7 +103,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                                 var lambdaInputType = methodSymbol.TypeArguments[0];
                                 var lambdaOutputType = model.GetTypeInfo(lambdaExpression.Body).Type;
                                 var expressionChain = GetExpressionChain(lambdaExpression);
-                                expressionArguments.Add(new(lambdaExpression, expressionChain, lambdaInputType, lambdaOutputType));
+                                expressionArguments.Add(new(lambdaExpression.Body.ToString(), expressionChain, lambdaInputType, lambdaOutputType));
                                 allExpressionArgumentsAreValid &= expressionChain != null;
                             }
                             else
@@ -136,7 +133,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
         {
             MethodDatum methodDatum = null;
 
-            var (lambdaExpression, expressionChain, inputTypeSymbol, outputTypeSymbol) = outputTypeGroup.ArgumentData.First();
+            var (lambdaBodyString, expressionChain, inputTypeSymbol, outputTypeSymbol) = outputTypeGroup.ArgumentData.First();
             var (inputTypeName, outputTypeName) = (inputTypeSymbol.ToDisplayString(), outputTypeSymbol.ToDisplayString());
 
             if (outputTypeGroup.ArgumentData.Count == 1)
@@ -151,7 +148,7 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
                 var entries = new List<MapEntryDatum>(outputTypeGroup.ArgumentData.Count);
                 foreach (var argumentDatum in outputTypeGroup.ArgumentData)
                 {
-                    var mapKey = argumentDatum.LambdaExpression.Body.ToString();
+                    var mapKey = argumentDatum.LambdaBodyString;
                     var mapEntry = new MapEntryDatum(mapKey, argumentDatum.ExpressionChain);
                     entries.Add(mapEntry);
                 }

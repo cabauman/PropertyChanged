@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed record MultiExpressionMethodDatum : MethodDatum, IEquatable<MultiExpressionMethodDatum>
+    internal sealed record MultiExpressionMethodDatum : MethodDatum
     {
         public MultiExpressionMethodDatum(IEnumerable<string> typeNames)
         {

@@ -4,9 +4,32 @@
 
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
-    internal sealed record ExpressionArgument(LambdaExpressionSyntax LambdaExpression, List<string> ExpressionChain, ITypeSymbol InputType, ITypeSymbol OutputType);
+    internal sealed record ExpressionArgument(string LambdaBodyString, List<string> ExpressionChain, ITypeSymbol InputType, ITypeSymbol OutputType)
+    {
+        public bool Equals(ExpressionArgument other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            return
+                EqualityComparer<string>.Default.Equals(LambdaBodyString, other.LambdaBodyString) &&
+                SymbolEqualityComparer.Default.Equals(InputType, other.InputType) &&
+                SymbolEqualityComparer.Default.Equals(OutputType, other.OutputType);
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = 1230885993;
+            hashCode = (hashCode * -1521134295) + EqualityComparer<string>.Default.GetHashCode(LambdaBodyString);
+            hashCode = (hashCode * -1521134295) + SymbolEqualityComparer.Default.GetHashCode(InputType);
+            hashCode = (hashCode * -1521134295) + SymbolEqualityComparer.Default.GetHashCode(OutputType);
+
+            return hashCode;
+        }
+    }
 }

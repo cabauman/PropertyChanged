@@ -11,13 +11,6 @@ namespace ReactiveMarbles.PropertyChanged.SourceGenerator
 {
     internal static class Extensions
     {
-        public static IEnumerable<T> DistinctBy<T, T2>(this IEnumerable<T> source, Func<T, T2> func)
-        {
-            return source
-                .GroupBy(x => func(x))
-                .Select(x => x.First());
-        }
-
         public static InputTypeGroup<T> ToInputTypeGroup<T>(this IEnumerable<OutputTypeGroup<T>> source, ITypeSymbol inputType)
         {
             return new InputTypeGroup<T>(inputType.ToDisplayString(), source);
